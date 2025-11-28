@@ -1,58 +1,66 @@
 ﻿using System.Security.Cryptography;
 using static System.Console;
-
-WriteLine("Enter folder path: ");
-string folderPath = ReadLine() ?? "";
-
-if (string.IsNullOrEmpty(folderPath))
+try
 {
-    WriteLine("Folder path cannot be empty!");
-    WriteLine("Please Enter Folder Path");
-    folderPath = ReadLine() ?? "";
-}
 
-if (!Directory.Exists(folderPath))
-{
-    WriteLine("Folder not found!");
-    return;
-}
+    WriteLine("Enter folder path: ");
+    string folderPath = ReadLine() ?? "";
 
-WriteLine("Great! Folder Exists Press any key to continue...");
-ReadKey();
+    if (string.IsNullOrEmpty(folderPath))
+    {
+        WriteLine("Folder path cannot be empty!");
+        WriteLine("Please Enter Folder Path");
+        folderPath = ReadLine() ?? "";
+    }
 
-WriteLine("\nChoose an option:");
-WriteLine("1. Convert File Extensions");
-WriteLine("2. Remove Duplicate Files");
-WriteLine("3. Both");
-string choice = ReadLine() ?? "";
+    if (!Directory.Exists(folderPath))
+    {
+        WriteLine("Folder not found!");
+        return;
+    }
 
-if (string.IsNullOrEmpty(choice))
-{
-    WriteLine("Choice cannot be empty!");
-    WriteLine("Please Enter Your Choice");
-    choice = ReadLine() ?? "";
-}
+    WriteLine("Great! Folder Exists Press any key to continue...");
+    ReadKey();
 
-if (choice == "1")
-{
-    ConvertFileExtensions(folderPath);
-}
-else if (choice == "2")
-{
-    RemoveDuplicateFiles(folderPath);
-}
-else if (choice == "3")
-{
-    ConvertFileExtensions(folderPath);
-    RemoveDuplicateFiles(folderPath);
-}
-else
-{
-    WriteLine("Invalid choice!");
-}
+    WriteLine("\nChoose an option:");
+    WriteLine("1. Convert File Extensions");
+    WriteLine("2. Remove Duplicate Files");
+    WriteLine("3. Both");
+    string choice = ReadLine() ?? "";
 
-WriteLine("\nPress any key to exit...");
-ReadKey();
+    if (string.IsNullOrEmpty(choice))
+    {
+        WriteLine("Choice cannot be empty!");
+        WriteLine("Please Enter Your Choice");
+        choice = ReadLine() ?? "";
+    }
+
+    if (choice == "1")
+    {
+        ConvertFileExtensions(folderPath);
+    }
+    else if (choice == "2")
+    {
+        RemoveDuplicateFiles(folderPath);
+    }
+    else if (choice == "3")
+    {
+        ConvertFileExtensions(folderPath);
+        RemoveDuplicateFiles(folderPath);
+    }
+    else
+    {
+        WriteLine("Invalid choice!");
+    }
+
+    WriteLine("\nPress any key to exit...");
+    ReadKey();
+
+}
+catch (Exception ex)
+{
+    WriteLine($"\nAn error occurred: {ex.Message}");
+}
 
 
 // ------------------ FUNCTION: CONVERT EXTENSIONS ------------------
