@@ -1,93 +1,71 @@
 ﻿using System.Security.Cryptography;
 using static System.Console;
-try
+
+WriteLine("Enter folder path: ");
+string folderPath = ReadLine() ?? "";
+
+while (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
 {
+    WriteLine("Folder not found or empty. Please re-enter:");
+    folderPath = ReadLine() ?? "";
+}
 
-    WriteLine("Enter folder path: ");
-    string folderPath = ReadLine() ?? "";
+WriteLine("\nFolder Found Press any key to continue...");
+ReadKey();
 
-    if (string.IsNullOrEmpty(folderPath))
-    {
-        WriteLine("Folder path cannot be empty!");
-        WriteLine("Please Enter Folder Path");
-        folderPath = ReadLine() ?? "";
-    }
+WriteLine("\nChoose an option:");
+WriteLine("1. Convert File Extensions");
+WriteLine("2. Remove Duplicate Files");
+WriteLine("3. Both");
+string choice = ReadLine() ?? "";
 
-    if (!Directory.Exists(folderPath))
-    {
-        WriteLine("Folder not found!");
-        return;
-    }
-
-    WriteLine("Great! Folder Exists Press any key to continue...");
-    ReadKey();
-
-    WriteLine("\nChoose an option:");
-    WriteLine("1. Convert File Extensions");
-    WriteLine("2. Remove Duplicate Files");
-    WriteLine("3. Both");
-    string choice = ReadLine() ?? "";
-
-    if (string.IsNullOrEmpty(choice))
-    {
-        WriteLine("Choice cannot be empty!");
-        WriteLine("Please Enter Your Choice");
-        choice = ReadLine() ?? "";
-    }
-
-    if (choice == "1")
-    {
+switch (choice)
+{
+    case "1":
         ConvertFileExtensions(folderPath);
-    }
-    else if (choice == "2")
-    {
+        break;
+    case "2":
         RemoveDuplicateFiles(folderPath);
-    }
-    else if (choice == "3")
-    {
+        break;
+    case "3":
         ConvertFileExtensions(folderPath);
         RemoveDuplicateFiles(folderPath);
-    }
-    else
-    {
+        break;
+    default:
         WriteLine("Invalid choice!");
-    }
-
-    WriteLine("\nPress any key to exit...");
-    ReadKey();
-
+        break;
 }
-catch (Exception ex)
-{
-    WriteLine($"\nAn error occurred: {ex.Message}");
-}
+
+WriteLine("\nPress any key to exit...");
+ReadKey();
+
 
 
 // ------------------ FUNCTION: CONVERT EXTENSIONS ------------------
 static void ConvertFileExtensions(string folderPath)
 {
     WriteLine("\nEnter Current Extension (without dot): ");
-    string currentExtention = ReadLine() ?? "";
+    string currentExt = ReadLine() ?? "";
 
-    if (string.IsNullOrEmpty(currentExtention))
+    while (string.IsNullOrEmpty(currentExt))
     {
-        WriteLine("Current Extension cannot be empty!");
-        currentExtention = ReadLine() ?? "";
+        WriteLine("Extension cannot be empty! Try again:");
+        currentExt = ReadLine() ?? "";
     }
 
     WriteLine("Enter New Extension (without dot): ");
-    string newExtention = ReadLine() ?? "";
+    string newExt = ReadLine() ?? "";
 
-    if (string.IsNullOrEmpty(newExtention))
+    while (string.IsNullOrEmpty(newExt))
     {
-        WriteLine("New Extension cannot be empty!");
-        newExtention = ReadLine() ?? "";
+        WriteLine("Extension cannot be empty! Try again:");
+        newExt = ReadLine() ?? "";
     }
 
     WriteLine("\nStarting conversion... Press any key to continue.");
     ReadKey();
 
-    string[] files = Directory.GetFiles(folderPath, $"*.{currentExtention}");
+    string[] files = Directory.GetFiles(folderPath, $"*.{currentExt}", SearchOption.AllDirectories);
     int count = 0;
 
     WriteLine($"\nRenaming {files.Length} files...");
@@ -97,7 +75,7 @@ static void ConvertFileExtensions(string folderPath)
 
     foreach (var file in files)
     {
-        string newFile = Path.ChangeExtension(file, $".{newExtention}");
+        string newFile = Path.ChangeExtension(file, newExt);
 
         try
         {
@@ -109,60 +87,88 @@ static void ConvertFileExtensions(string folderPath)
             WriteLine($"\nError renaming {Path.GetFileName(file)}: {ex.Message}");
         }
 
-        // Loader animation
         Write($"\rProcessing... {spinner[spinnerIndex]}   ({count}/{files.Length})");
         spinnerIndex = (spinnerIndex + 1) % spinner.Length;
-        Thread.Sleep(100);
     }
 
     WriteLine($"\n\n✔ Done! {count} files renamed successfully.");
 }
 
 
+
 // ------------------ FUNCTION: REMOVE DUPLICATES ------------------
 static void RemoveDuplicateFiles(string folderPath)
 {
-    var fileHashes = new Dictionary<string, string>();
-    string[] files = Directory.GetFiles(folderPath);
-    int removedCount = 0;
+    WriteLine("\nScanning files...\n");
 
-    WriteLine($"\nScanning {files.Length} files for duplicates...");
+    string backupFolder = Path.Combine(folderPath, "_DUPLICATES");
+    Directory.CreateDirectory(backupFolder);
+
+    var fileGroups = Directory
+        .GetFiles(folderPath, "*.*", SearchOption.AllDirectories)
+        .GroupBy(f => new FileInfo(f).Length); // Group by file size first
+
+    int removedCount = 0;
+    int processed = 0;
 
     int spinnerIndex = 0;
     char[] spinner = { '|', '/', '-', '\\' };
 
-    int processed = 0;
-
-    foreach (var file in files)
+    foreach (var group in fileGroups)
     {
-        string hash = GetFileHash(file);
+        if (group.Count() < 2) continue; // Only check duplicates in groups with > 1 file
 
-        if (fileHashes.ContainsKey(hash))
+        var hashStore = new HashSet<string>();
+
+        foreach (var file in group)
         {
-            File.Delete(file);
-            removedCount++;
-        }
-        else
-        {
-            fileHashes[hash] = file;
-        }
+            processed++;
 
-        processed++;
+            string hash;
+            try
+            {
+                hash = GetFileHash(file);
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"\n⚠ Unable to read {file}: {ex.Message}");
+                continue;
+            }
 
-        // Loader animation with counter
-        Write($"\rProcessing... {spinner[spinnerIndex]}   ({processed}/{files.Length})");
-        spinnerIndex = (spinnerIndex + 1) % spinner.Length;
-        Thread.Sleep(100);
+            if (hashStore.Contains(hash))
+            {
+                string duplicateDest = Path.Combine(backupFolder, Path.GetFileName(file));
+
+                try
+                {
+                    File.Move(file, duplicateDest, true);
+                    removedCount++;
+                }
+                catch (Exception ex)
+                {
+                    WriteLine($"\n Error moving duplicate file {file}: {ex.Message}");
+                }
+            }
+            else
+            {
+                hashStore.Add(hash);
+            }
+
+            Write($"\rProcessing... {spinner[spinnerIndex]}  ({processed} checked)");
+            spinnerIndex = (spinnerIndex + 1) % spinner.Length;
+        }
     }
 
-    WriteLine($"\n\n✔ Done! {removedCount} duplicate files removed successfully.");
+    WriteLine($"\n\n Done! {removedCount} duplicate files moved to folder: _DUPLICATES");
 }
 
 
+
+// ------------------ FUNCTION: HASH (SAFE) ------------------
 static string GetFileHash(string filePath)
 {
-    using var md5 = MD5.Create();
+    using var sha256 = SHA256.Create();
     using var stream = File.OpenRead(filePath);
-    byte[] hash = md5.ComputeHash(stream);
-    return BitConverter.ToString(hash).Replace("-", "").ToLower();
+    byte[] hashBytes = sha256.ComputeHash(stream);
+    return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
 }
